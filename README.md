@@ -282,7 +282,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Author
 
-**Your Name**
+**Ehsan Tatasadi**
 
 - LinkedIn: [ehsan-tatasadi](https://linkedin.com/in/ehsan-tatasadi)
 - GitHub: [@tatasadi](https://github.com/tatasadi)
