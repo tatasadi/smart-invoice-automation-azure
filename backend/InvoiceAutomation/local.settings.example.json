@@ -17,7 +17,10 @@
 
     "AzureOpenAIEndpoint": "https://YOUR_RESOURCE.openai.azure.com/",
     "AzureOpenAIKey": "YOUR_AZURE_OPENAI_KEY",
-    "AzureOpenAIDeploymentName": "gpt-4o",
-    "AzureOpenAIApiVersion": "2024-08-01-preview"
+    "AzureOpenAIDeploymentName": "gpt-4o"
+  },
+  "Host": {
+    "CORS": "*",
+    "CORSCredentials": false
   }
 }
