@@ -81,18 +81,28 @@ public class UploadInvoice
 
             _logger.LogInformation("Processing file: {FileName}, ContentType: {ContentType}", fileName, fileContentType);
 
-            // Step 1: Upload to Blob Storage
-            string blobUrl;
+            // Read stream into memory once
+            byte[] fileBytes;
             using (var memoryStream = new MemoryStream())
             {
                 await stream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-                blobUrl = await _blobService.UploadFileAsync(memoryStream, fileName, fileContentType);
+                fileBytes = memoryStream.ToArray();
+            }
+
+            // Step 1: Upload to Blob Storage
+            string blobUrl;
+            using (var uploadStream = new MemoryStream(fileBytes))
+            {
+                blobUrl = await _blobService.UploadFileAsync(uploadStream, fileName, fileContentType);
             }
             _logger.LogInformation("File uploaded to blob storage: {BlobUrl}", blobUrl);
 
-            // Step 2: Extract data with Form Recognizer
-            var extractedData = await _formRecognizerService.AnalyzeInvoiceAsync(blobUrl);
+            // Step 2: Extract data with Form Recognizer (using stream instead of URL)
+            ExtractedData extractedData;
+            using (var analysisStream = new MemoryStream(fileBytes))
+            {
+                extractedData = await _formRecognizerService.AnalyzeInvoiceAsync(analysisStream);
+            }
             _logger.LogInformation("Invoice data extracted. Vendor: {Vendor}, Amount: {Amount}",
                 extractedData.Vendor, extractedData.TotalAmount);
 
@@ -103,8 +113,13 @@ public class UploadInvoice
 
             // Step 4: Create invoice data object
             stopwatch.Stop();
+
+            // Normalize vendor name to create vendorId (partition key)
+            var vendorId = NormalizeVendorId(extractedData.Vendor);
+
             var invoiceData = new InvoiceData
             {
+                VendorId = vendorId,
                 FileName = fileName,
                 BlobUrl = blobUrl,
                 UploadDate = DateTime.UtcNow,
@@ -147,5 +162,30 @@ public class UploadInvoice
 
             return errorResponse;
         }
+    }
+
+    /// <summary>
+    /// Normalize vendor name to create a consistent vendor ID for partition key
+    /// </summary>
+    private static string NormalizeVendorId(string vendorName)
+    {
+        if (string.IsNullOrWhiteSpace(vendorName))
+        {
+            return "unknown";
+        }
+
+        // Convert to lowercase, remove special characters, replace spaces with hyphens
+        var normalized = vendorName.ToLowerInvariant()
+            .Replace("'", "")
+            .Replace("\"", "")
+            .Replace(".", "")
+            .Replace(",", "")
+            .Trim();
+
+        // Replace multiple spaces with single space, then replace spaces with hyphens
+        normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ");
+        normalized = normalized.Replace(" ", "-");
+
+        return normalized;
     }
 }

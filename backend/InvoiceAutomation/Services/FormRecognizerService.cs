@@ -13,9 +13,9 @@ public interface IFormRecognizerService
     /// <summary>
     /// Analyze an invoice and extract structured data
     /// </summary>
-    /// <param name="blobUrl">URL to the invoice file in blob storage</param>
+    /// <param name="documentStream">Stream containing the invoice document</param>
     /// <returns>Extracted invoice data</returns>
-    Task<ExtractedData> AnalyzeInvoiceAsync(string blobUrl);
+    Task<ExtractedData> AnalyzeInvoiceAsync(Stream documentStream);
 }
 
 public class FormRecognizerService : IFormRecognizerService
@@ -29,17 +29,17 @@ public class FormRecognizerService : IFormRecognizerService
         _client = new DocumentAnalysisClient(new Uri(endpoint), new AzureKeyCredential(key));
     }
 
-    public async Task<ExtractedData> AnalyzeInvoiceAsync(string blobUrl)
+    public async Task<ExtractedData> AnalyzeInvoiceAsync(Stream documentStream)
     {
         try
         {
-            _logger.LogInformation("Analyzing invoice from URL: {BlobUrl}", blobUrl);
+            _logger.LogInformation("Analyzing invoice from stream");
 
-            // Use prebuilt invoice model
-            var operation = await _client.AnalyzeDocumentFromUriAsync(
+            // Use prebuilt invoice model with stream
+            var operation = await _client.AnalyzeDocumentAsync(
                 WaitUntil.Completed,
                 "prebuilt-invoice",
-                new Uri(blobUrl));
+                documentStream);
 
             var result = operation.Value;
             var invoice = result.Documents.FirstOrDefault();
@@ -68,7 +68,7 @@ public class FormRecognizerService : IFormRecognizerService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error analyzing invoice from URL: {BlobUrl}", blobUrl);
+            _logger.LogError(ex, "Error analyzing invoice from stream");
             throw;
         }
     }

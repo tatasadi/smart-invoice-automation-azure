@@ -8,10 +8,16 @@ namespace InvoiceAutomation.Models;
 public class InvoiceData
 {
     /// <summary>
-    /// Unique identifier for the invoice (also used as partition key)
+    /// Unique identifier for the invoice
     /// </summary>
     [JsonProperty("id")]
     public string Id { get; set; } = Guid.NewGuid().ToString();
+
+    /// <summary>
+    /// Vendor identifier used as partition key (normalized vendor name)
+    /// </summary>
+    [JsonProperty("vendorId")]
+    public string VendorId { get; set; } = string.Empty;
 
     /// <summary>
     /// Original filename of the uploaded invoice

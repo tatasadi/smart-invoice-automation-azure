@@ -36,7 +36,16 @@ public class GetInvoice
                 return badResponse;
             }
 
-            var invoice = await _cosmosDbService.GetInvoiceByIdAsync(id);
+            // Get vendorId from query parameter
+            var vendorId = req.Query["vendorId"];
+            if (string.IsNullOrWhiteSpace(vendorId))
+            {
+                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badResponse.WriteAsJsonAsync(new { error = "vendorId query parameter is required" });
+                return badResponse;
+            }
+
+            var invoice = await _cosmosDbService.GetInvoiceByIdAsync(id, vendorId);
 
             if (invoice == null)
             {

@@ -23,11 +23,12 @@ public interface ICosmosDbService
     Task<List<InvoiceData>> GetAllInvoicesAsync();
 
     /// <summary>
-    /// Get a specific invoice by ID
+    /// Get a specific invoice by ID and vendor ID
     /// </summary>
     /// <param name="id">Invoice ID</param>
+    /// <param name="vendorId">Vendor ID (partition key)</param>
     /// <returns>Invoice data or null if not found</returns>
-    Task<InvoiceData?> GetInvoiceByIdAsync(string id);
+    Task<InvoiceData?> GetInvoiceByIdAsync(string id, string vendorId);
 }
 
 public class CosmosDbService : ICosmosDbService
@@ -51,11 +52,11 @@ public class CosmosDbService : ICosmosDbService
     {
         try
         {
-            _logger.LogInformation("Saving invoice to Cosmos DB: {InvoiceId}", invoice.Id);
+            _logger.LogInformation("Saving invoice to Cosmos DB: {InvoiceId}, VendorId: {VendorId}", invoice.Id, invoice.VendorId);
 
             var response = await _container.CreateItemAsync(
                 invoice,
-                new PartitionKey(invoice.Id));
+                new PartitionKey(invoice.VendorId));
 
             _logger.LogInformation("Invoice saved successfully. Request charge: {RequestCharge} RU",
                 response.RequestCharge);
@@ -100,15 +101,15 @@ public class CosmosDbService : ICosmosDbService
         }
     }
 
-    public async Task<InvoiceData?> GetInvoiceByIdAsync(string id)
+    public async Task<InvoiceData?> GetInvoiceByIdAsync(string id, string vendorId)
     {
         try
         {
-            _logger.LogInformation("Retrieving invoice from Cosmos DB: {InvoiceId}", id);
+            _logger.LogInformation("Retrieving invoice from Cosmos DB: {InvoiceId}, VendorId: {VendorId}", id, vendorId);
 
             var response = await _container.ReadItemAsync<InvoiceData>(
                 id,
-                new PartitionKey(id));
+                new PartitionKey(vendorId));
 
             _logger.LogInformation("Invoice retrieved successfully. Request charge: {RequestCharge} RU",
                 response.RequestCharge);
@@ -117,7 +118,7 @@ public class CosmosDbService : ICosmosDbService
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            _logger.LogWarning("Invoice not found: {InvoiceId}", id);
+            _logger.LogWarning("Invoice not found: {InvoiceId}, VendorId: {VendorId}", id, vendorId);
             return null;
         }
         catch (Exception ex)
