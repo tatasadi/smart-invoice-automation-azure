@@ -83,6 +83,20 @@ export async function getInvoice(id: string, vendorId: string): Promise<Invoice>
   return normalizeInvoice(res.data);
 }
 
+export async function getInvoiceBlobSasUrl(blobUrl: string): Promise<string> {
+  const apiBase = getApiBase();
+  const url = `${apiBase}/blob/sas?blobUrl=${encodeURIComponent(blobUrl)}`;
+  console.log("Calling SAS URL endpoint:", url);
+  const res = await axios.get<{ sasUrl: string }>(url);
+  console.log("API Response:", res.data);
+  return res.data.sasUrl;
+}
+
+export function getInvoiceBlobUrl(id: string, vendorId: string, blobUrl: string): string {
+  const apiBase = getApiBase();
+  return `${apiBase}/invoice/blob/${encodeURIComponent(id)}?vendorId=${encodeURIComponent(vendorId)}&blobUrl=${encodeURIComponent(blobUrl)}`;
+}
+
 // --- Helpers ---
 function normalizeInvoice(input: any): Invoice {
   if (!input || typeof input !== "object") {

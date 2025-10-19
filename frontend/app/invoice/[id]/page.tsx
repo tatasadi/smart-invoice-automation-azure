@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { getInvoice, type Invoice } from "@/lib/api";
 import InvoiceResults from "@/components/InvoiceResults";
+import InvoiceDocumentViewer from "@/components/InvoiceDocumentViewer";
 import { Button } from "@/components/ui/button";
 
 export default function InvoiceDetailPage() {
@@ -64,7 +65,7 @@ export default function InvoiceDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-7xl px-6 py-10">
       <div className="mb-6 flex items-center gap-4">
         <Link href="/dashboard">
           <Button variant="outline" size="sm">
@@ -78,20 +79,22 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      {invoice.blobUrl && (
-        <div className="mb-6 rounded-xl border border-gray-200 p-4 bg-white">
-          <a
-            href={invoice.blobUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#0078D4] hover:underline text-sm font-medium"
-          >
-            View Original Document →
-          </a>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Document Viewer - Left Side */}
+        <div>
+          {invoice.blobUrl && (
+            <InvoiceDocumentViewer
+              blobUrl={invoice.blobUrl}
+              fileName={invoice.fileName}
+            />
+          )}
         </div>
-      )}
 
-      <InvoiceResults invoice={invoice} />
+        {/* Invoice Data - Right Side */}
+        <div>
+          <InvoiceResults invoice={invoice} />
+        </div>
+      </div>
     </main>
   );
 }
