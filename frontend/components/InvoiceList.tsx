@@ -3,13 +3,28 @@
 import { useEffect, useState } from "react";
 import { getInvoices, type Invoice } from "@/lib/api";
 import { format } from "date-fns";
+import Link from "next/link";
 
-export default function InvoiceList() {
+type Props = {
+  invoices?: Invoice[];
+  loading?: boolean;
+};
+
+export default function InvoiceList({ invoices: propInvoices, loading: propLoading }: Props) {
   const [data, setData] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // If props are provided, use them; otherwise fetch data
+  const shouldFetch = propInvoices === undefined;
+
   useEffect(() => {
+    if (!shouldFetch) {
+      setData(propInvoices || []);
+      setLoading(propLoading || false);
+      return;
+    }
+
     (async () => {
       try {
         const invoices = await getInvoices();
@@ -20,11 +35,30 @@ export default function InvoiceList() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [shouldFetch, propInvoices, propLoading]);
 
-  if (loading) return <div className="text-sm text-gray-600">Loading invoices...</div>;
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-8">
+        <div className="flex items-center justify-center">
+          <div className="animate-pulse text-gray-600">Loading invoices...</div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (!data.length) return <div className="text-sm text-gray-600">No invoices yet.</div>;
+
+  if (!data.length) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-8">
+        <div className="text-center text-gray-500">
+          <p className="text-lg mb-2">No invoices yet</p>
+          <p className="text-sm">Upload your first invoice to get started</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -44,8 +78,14 @@ export default function InvoiceList() {
             const cls = inv.classification;
             const uploaded = inv.uploadDate ? new Date(inv.uploadDate) : null;
             const key = [inv.id, inv.vendorId, inv.fileName].filter(Boolean).join("|") || `row-${idx}`;
+            const detailUrl = `/invoice/${encodeURIComponent(inv.id)}?vendorId=${encodeURIComponent(inv.vendorId)}`;
+
             return (
-              <tr key={key} className="border-t">
+              <tr
+                key={key}
+                className="border-t hover:bg-gray-50 transition-colors cursor-pointer"
+                onClick={() => window.location.href = detailUrl}
+              >
                 <td className="py-3 pl-4 pr-4 font-medium text-gray-900">{ex?.vendor || inv.vendorId}</td>
                 <td className="py-3 pr-4 text-gray-700">{ex?.invoiceNumber || "-"}</td>
                 <td className="py-3 pr-4 text-gray-900">{ex?.totalAmount != null ? ex.totalAmount.toFixed(2) : "-"}</td>

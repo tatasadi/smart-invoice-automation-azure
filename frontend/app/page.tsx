@@ -21,9 +21,27 @@ export default function Home() {
         <FileUpload onUploaded={setInvoice} />
       </section>
 
-      <section>
-        <InvoiceResults invoice={invoice} />
-      </section>
+      {invoice ? (
+        <section>
+          <InvoiceResults invoice={invoice} />
+        </section>
+      ) : (
+        <section className="text-center py-12 px-6 rounded-xl bg-white border border-gray-200">
+          <div className="max-w-md mx-auto">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Get Started
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Upload an invoice above to see AI-powered extraction and classification in action.
+            </p>
+            <div className="text-xs text-gray-500 space-y-1">
+              <p>✓ Extract vendor, amounts, dates, and line items</p>
+              <p>✓ Automatic category classification</p>
+              <p>✓ Processing in under 5 seconds</p>
+            </div>
+          </div>
+        </section>
+      )}
     </main>
   );
 }
