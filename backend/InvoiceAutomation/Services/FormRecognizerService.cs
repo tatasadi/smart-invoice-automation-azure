@@ -2,6 +2,8 @@ using Azure;
 using Azure.AI.FormRecognizer.DocumentAnalysis;
 using InvoiceAutomation.Models;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace InvoiceAutomation.Services;
 
@@ -50,14 +52,36 @@ public class FormRecognizerService : IFormRecognizerService
                 throw new InvalidOperationException("No invoice found in document");
             }
 
-            // Extract fields
+            // Extract fields with robust fallbacks for vendor and currency
+            var vendor = GetFieldValue(invoice, "VendorName");
+            if (string.IsNullOrWhiteSpace(vendor))
+            {
+                vendor = TryInferVendorFromLayout(result);
+            }
+
+            var invoiceNumber = GetFieldValue(invoice, "InvoiceId");
+            var invoiceDate = GetFieldValue(invoice, "InvoiceDate");
+            var totalAmount = GetFieldValueAsDecimal(invoice, "InvoiceTotal");
+
+            // Prefer explicit currency code; otherwise infer from symbols/content; finally default to USD
+            var currency = GetFieldValue(invoice, "CurrencyCode");
+            if (string.IsNullOrWhiteSpace(currency))
+            {
+                string? totalText = null;
+                if (invoice.Fields.TryGetValue("InvoiceTotal", out var totalField))
+                {
+                    totalText = totalField.Content;
+                }
+                currency = InferCurrencyFromText(totalText) ?? InferCurrencyFromText(result.Content) ?? "USD";
+            }
+
             var extractedData = new ExtractedData
             {
-                Vendor = GetFieldValue(invoice, "VendorName"),
-                InvoiceNumber = GetFieldValue(invoice, "InvoiceId"),
-                InvoiceDate = GetFieldValue(invoice, "InvoiceDate"),
-                TotalAmount = GetFieldValueAsDecimal(invoice, "InvoiceTotal"),
-                Currency = GetFieldValue(invoice, "CurrencyCode") ?? "USD",
+                Vendor = vendor,
+                InvoiceNumber = invoiceNumber,
+                InvoiceDate = invoiceDate,
+                TotalAmount = totalAmount,
+                Currency = currency,
                 LineItems = ExtractLineItems(invoice)
             };
 
@@ -94,6 +118,71 @@ public class FormRecognizerService : IFormRecognizerService
             }
         }
         return 0;
+    }
+
+    // Try to infer a vendor name from page layout when the model doesn't map VendorName.
+    // Heuristic: pick the first prominent line on page 1 that isn't a label like "INVOICE",
+    // and doesn't look like a date/number block.
+    private string TryInferVendorFromLayout(AnalyzeResult result)
+    {
+        var page = result.Pages.FirstOrDefault();
+        if (page == null || page.Lines == null) return string.Empty;
+
+        // Common labels to skip
+        string[] skipTokens = new[] { "INVOICE", "BILL TO", "SHIP TO", "DATE", "BALANCE DUE", "SUBTOTAL", "TOTAL", "DISCOUNT", "SHIPPING" };
+        foreach (var line in page.Lines)
+        {
+            var text = (line.Content ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(text)) continue;
+
+            var upper = text.ToUpperInvariant();
+            if (skipTokens.Any(t => upper.Contains(t))) continue;
+            // Skip obvious invoice numbers like "# 24939" or lines starting with '#'
+            if (Regex.IsMatch(text, @"^#?\s*\d{3,}")) continue;
+            // Skip monetary lines
+            if (Regex.IsMatch(text, @"[\$€£¥]\s*\d")) continue;
+
+            // Favor short brand-like lines (1-3 words)
+            var words = Regex.Split(text, @"\s+").Where(w => !string.IsNullOrWhiteSpace(w)).ToArray();
+            if (words.Length > 0 && words.Length <= 3)
+            {
+                return text;
+            }
+        }
+        return string.Empty;
+    }
+
+    // Infer ISO currency code from text containing amounts or symbols
+    private string? InferCurrencyFromText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var t = text.Trim();
+        var upper = t.ToUpperInvariant();
+
+        // Direct codes first
+        if (upper.Contains("USD")) return "USD";
+        if (upper.Contains("EUR")) return "EUR";
+        if (upper.Contains("GBP")) return "GBP";
+        if (upper.Contains("JPY")) return "JPY";
+        if (upper.Contains("AUD")) return "AUD";
+        if (upper.Contains("CAD")) return "CAD";
+        if (upper.Contains("INR") || upper.Contains("RS ") || upper.Contains(" RS")) return "INR";
+        if (upper.Contains("NZD")) return "NZD";
+
+        // Symbol heuristics and localized prefixes
+        if (Regex.IsMatch(t, @"(US\$|\$)"))
+        {
+            // Disambiguate some prefixes
+            if (upper.Contains("CA$") || upper.Contains("C$")) return "CAD";
+            if (upper.Contains("AU$") || upper.Contains("A$")) return "AUD";
+            if (upper.Contains("NZ$") ) return "NZD";
+            return "USD";
+        }
+        if (t.Contains("€")) return "EUR";
+        if (t.Contains("£")) return "GBP";
+        if (t.Contains("¥")) return "JPY";
+
+        return null;
     }
 
     private List<LineItem>? ExtractLineItems(AnalyzedDocument document)

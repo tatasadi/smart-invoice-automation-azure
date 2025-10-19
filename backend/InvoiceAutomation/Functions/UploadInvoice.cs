@@ -45,18 +45,15 @@ public class UploadInvoice
             // Get content type and read body as stream
             var contentType = req.Headers.GetValues("Content-Type").FirstOrDefault() ?? string.Empty;
 
-            if (!contentType.Contains("multipart/form-data"))
-            {
-                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badResponse.WriteAsJsonAsync(new { error = "Request must be multipart/form-data" });
-                return badResponse;
-            }
-
             // For simplicity in the demo, read the entire stream
             // In production, use a proper multipart parser
             var stream = req.Body;
             var fileName = "invoice-" + Guid.NewGuid().ToString() + ".pdf";
-            var fileContentType = "application/pdf";
+            // Prefer provided content type when uploading raw file bytes; fall back to octet-stream
+            var fileContentType = (!string.IsNullOrWhiteSpace(contentType) &&
+                                   !contentType.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase))
+                ? contentType
+                : "application/octet-stream";
 
             // Try to extract filename from headers
             if (req.Headers.Contains("X-File-Name"))
