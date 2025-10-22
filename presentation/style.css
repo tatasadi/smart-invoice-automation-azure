@@ -1,0 +1,241 @@
+/* Custom styles for the presentation */
+
+:root {
+  --slidev-theme-primary: #0078d4;
+  --slidev-theme-accents: #00bcf2;
+}
+
+/* Custom font imports */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap');
+
+/* Prevent overflow and ensure content fits */
+.slidev-layout {
+  overflow: hidden;
+}
+
+.slidev-layout h1 {
+  font-size: 2.5rem !important;
+  line-height: 1.2 !important;
+  margin-bottom: 1rem !important;
+}
+
+.slidev-layout h2 {
+  font-size: 1.5rem !important;
+  line-height: 1.3 !important;
+  margin-bottom: 0.75rem !important;
+  margin-top: 0.5rem !important;
+}
+
+.slidev-layout h3 {
+  font-size: 1.25rem !important;
+  line-height: 1.3 !important;
+}
+
+.slidev-layout ul {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.slidev-layout li {
+  line-height: 1.6 !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* Improve code block styling */
+.slidev-code {
+  @apply rounded-lg shadow-lg;
+}
+
+/* Enhance click animations */
+.slidev-vclick-target {
+  transition: all 0.3s ease;
+}
+
+/* Custom card styling */
+.custom-card {
+  @apply p-6 rounded-lg shadow-md bg-gray-800 bg-opacity-50 backdrop-blur;
+}
+
+/* Gradient text */
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400;
+}
+
+
+/* Ensure high contrast in mermaid diagrams */
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node ellipse,
+.mermaid .node polygon {
+  stroke-width: 3px !important;
+}
+
+.mermaid .nodeLabel,
+.mermaid .label,
+.mermaid text {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Mermaid edge labels */
+.mermaid .edgeLabel {
+  background-color: transparent !important;
+  color: #fff !important;
+}
+
+/* Pie chart text */
+.mermaid .pieCircle text {
+  fill: #fff !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+
+.mermaid .legend text {
+  fill: #fff !important;
+  font-size: 14px !important;
+}
+
+/* Custom badge styles */
+.badge {
+  @apply px-3 py-1 rounded-full text-sm font-semibold;
+}
+
+.badge-primary {
+  @apply bg-blue-500 text-white;
+}
+
+.badge-success {
+  @apply bg-green-500 text-white;
+}
+
+.badge-warning {
+  @apply bg-yellow-500 text-black;
+}
+
+/* Improve list styling */
+.slidev-layout ul {
+  @apply space-y-2;
+}
+
+.slidev-layout li {
+  @apply leading-relaxed;
+}
+
+/* Code highlight improvements */
+.shiki {
+  @apply rounded-lg p-4;
+}
+
+/* Custom transitions */
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-enter-from {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.slide-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+/* Improve heading spacing */
+h1 {
+  @apply mb-6;
+}
+
+h2 {
+  @apply mb-4 mt-6;
+}
+
+h3 {
+  @apply mb-3 mt-4;
+}
+
+/* Custom grid layouts */
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Improve table styling */
+table {
+  @apply w-full border-collapse;
+}
+
+th {
+  @apply bg-gray-700 text-left p-3 font-semibold;
+}
+
+td {
+  @apply border-t border-gray-600 p-3;
+}
+
+/* Custom alert boxes */
+.alert {
+  @apply p-4 rounded-lg mb-4;
+}
+
+.alert-info {
+  @apply bg-blue-500 bg-opacity-20 border-l-4 border-blue-500;
+}
+
+.alert-success {
+  @apply bg-green-500 bg-opacity-20 border-l-4 border-green-500;
+}
+
+.alert-warning {
+  @apply bg-yellow-500 bg-opacity-20 border-l-4 border-yellow-500;
+}
+
+/* Improve blockquote styling */
+blockquote {
+  @apply border-l-4 border-blue-500 pl-4 italic opacity-80;
+}
+
+/* Enhance icon sizing */
+.icon-lg {
+  @apply text-4xl;
+}
+
+.icon-xl {
+  @apply text-6xl;
+}
+
+/* Custom animation for attention */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Improve code inline styling */
+code:not(pre code) {
+  @apply bg-gray-700 px-2 py-1 rounded text-sm;
+}
+
+/* Custom button styling */
+.btn {
+  @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
+}
+
+.btn-primary {
+  @apply bg-blue-500 hover:bg-blue-600 text-white;
+}
+
+.btn-secondary {
+  @apply bg-gray-600 hover:bg-gray-700 text-white;
+}
