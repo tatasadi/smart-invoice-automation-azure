@@ -40,15 +40,31 @@ public class OpenAIService : IOpenAIService
 
             var categories = string.Join("\n- ", InvoiceCategories.GetAllCategories());
 
+            // Build line items section if available
+            var lineItemsSection = "";
+            if (extractedData.LineItems != null && extractedData.LineItems.Any())
+            {
+                lineItemsSection = "\n\nLine Items:";
+                foreach (var item in extractedData.LineItems)
+                {
+                    lineItemsSection += $"\n- {item.Description}";
+                    if (item.Quantity.HasValue)
+                        lineItemsSection += $" (Qty: {item.Quantity})";
+                    if (item.Amount > 0)
+                        lineItemsSection += $" - {item.Amount:C}";
+                }
+            }
+
             var prompt = $@"You are an expert accountant. Classify this invoice into one of these categories:
 - {categories}
 
 Invoice details:
 Vendor: {extractedData.Vendor}
 Amount: {extractedData.TotalAmount:C} {extractedData.Currency}
-Invoice Number: {extractedData.InvoiceNumber}
+Invoice Number: {extractedData.InvoiceNumber}{lineItemsSection}
 
-Analyze the vendor name and invoice details to determine the most appropriate category.
+Analyze the vendor name, invoice details, and line items (if available) to determine the most appropriate category.
+The line item descriptions are especially important for accurate categorization.
 
 Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 {{""category"": ""category name"", ""confidence"": 0.95, ""reasoning"": ""brief explanation""}}";

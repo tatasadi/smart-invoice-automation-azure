@@ -75,6 +75,14 @@ public class FormRecognizerService : IFormRecognizerService
                 currency = InferCurrencyFromText(totalText) ?? InferCurrencyFromText(result.Content) ?? "USD";
             }
 
+            // Try to extract line items from fields first, then fall back to tables
+            var lineItems = ExtractLineItems(invoice);
+            if (lineItems == null || lineItems.Count == 0)
+            {
+                _logger.LogInformation("No line items found in fields, trying to extract from tables");
+                lineItems = ExtractLineItemsFromTables(result);
+            }
+
             var extractedData = new ExtractedData
             {
                 Vendor = vendor,
@@ -82,7 +90,7 @@ public class FormRecognizerService : IFormRecognizerService
                 InvoiceDate = invoiceDate,
                 TotalAmount = totalAmount,
                 Currency = currency,
-                LineItems = ExtractLineItems(invoice)
+                LineItems = lineItems
             };
 
             _logger.LogInformation("Invoice analyzed successfully. Vendor: {Vendor}, Amount: {Amount}",
@@ -189,8 +197,50 @@ public class FormRecognizerService : IFormRecognizerService
     {
         var lineItems = new List<LineItem>();
 
-        if (document.Fields.TryGetValue("Items", out var itemsField) &&
-            itemsField.FieldType == DocumentFieldType.List)
+        // Log all available fields for debugging
+        _logger.LogInformation("Available fields in document: {Fields}",
+            string.Join(", ", document.Fields.Keys));
+
+        // Try multiple possible field names for line items
+        var possibleFieldNames = new[]
+        {
+            "Item",
+            "Items",
+            "LineItems",
+            "Line_Items",
+            "Services",
+            "Products",
+            "Goods",
+            "Details",
+            "InvoiceItems",
+            "InvoiceLines",
+            "Entries"
+        };
+
+        DocumentField? itemsField = null;
+        string? foundFieldName = null;
+
+        // Find the first matching field
+        foreach (var fieldName in possibleFieldNames)
+        {
+            if (document.Fields.TryGetValue(fieldName, out itemsField) &&
+                itemsField.FieldType == DocumentFieldType.List)
+            {
+                foundFieldName = fieldName;
+                _logger.LogInformation("Found line items field: {FieldName} with {Count} items",
+                    fieldName, (itemsField.Value as IReadOnlyList<DocumentField>)?.Count ?? 0);
+                break; // Found a valid field
+            }
+            itemsField = null;
+        }
+
+        if (foundFieldName == null)
+        {
+            _logger.LogWarning("No line items field found. Tried: {FieldNames}",
+                string.Join(", ", possibleFieldNames));
+        }
+
+        if (itemsField != null)
         {
             var items = itemsField.Value as IReadOnlyList<DocumentField>;
             if (items != null)
@@ -217,6 +267,116 @@ public class FormRecognizerService : IFormRecognizerService
         }
 
         return lineItems.Count > 0 ? lineItems : null;
+    }
+
+    private List<LineItem>? ExtractLineItemsFromTables(AnalyzeResult result)
+    {
+        var lineItems = new List<LineItem>();
+
+        if (result.Tables == null || !result.Tables.Any())
+        {
+            _logger.LogWarning("No tables found in document");
+            return null;
+        }
+
+        foreach (var table in result.Tables)
+        {
+            _logger.LogInformation("Processing table with {RowCount} rows and {ColumnCount} columns",
+                table.RowCount, table.ColumnCount);
+
+            // Try to identify header row and column indices
+            int descriptionCol = -1, quantityCol = -1, rateCol = -1, amountCol = -1;
+            var headerRow = 0;
+
+            // Look for header row (usually row 0)
+            foreach (var cell in table.Cells.Where(c => c.RowIndex == headerRow))
+            {
+                var content = cell.Content?.ToLowerInvariant() ?? "";
+
+                if (content.Contains("item") || content.Contains("description") || content.Contains("product"))
+                    descriptionCol = cell.ColumnIndex;
+                else if (content.Contains("qty") || content.Contains("quantity"))
+                    quantityCol = cell.ColumnIndex;
+                else if (content.Contains("rate") || content.Contains("price") || content.Contains("unit"))
+                    rateCol = cell.ColumnIndex;
+                else if (content.Contains("amount") || content.Contains("total"))
+                    amountCol = cell.ColumnIndex;
+            }
+
+            _logger.LogInformation("Column mapping - Description: {Desc}, Quantity: {Qty}, Rate: {Rate}, Amount: {Amt}",
+                descriptionCol, quantityCol, rateCol, amountCol);
+
+            // If we couldn't find proper headers, skip this table
+            if (descriptionCol == -1 && amountCol == -1)
+            {
+                _logger.LogWarning("Could not identify item columns in table, skipping");
+                continue;
+            }
+
+            // Extract line items from data rows (skip header row)
+            for (int row = headerRow + 1; row < table.RowCount; row++)
+            {
+                var rowCells = table.Cells.Where(c => c.RowIndex == row).ToList();
+
+                var description = descriptionCol >= 0
+                    ? rowCells.FirstOrDefault(c => c.ColumnIndex == descriptionCol)?.Content ?? ""
+                    : "";
+
+                var quantityStr = quantityCol >= 0
+                    ? rowCells.FirstOrDefault(c => c.ColumnIndex == quantityCol)?.Content ?? ""
+                    : "";
+
+                var rateStr = rateCol >= 0
+                    ? rowCells.FirstOrDefault(c => c.ColumnIndex == rateCol)?.Content ?? ""
+                    : "";
+
+                var amountStr = amountCol >= 0
+                    ? rowCells.FirstOrDefault(c => c.ColumnIndex == amountCol)?.Content ?? ""
+                    : "";
+
+                // Skip rows that don't look like line items (e.g., subtotal, total rows)
+                if (string.IsNullOrWhiteSpace(description) ||
+                    description.ToLowerInvariant().Contains("subtotal") ||
+                    description.ToLowerInvariant().Contains("shipping") ||
+                    description.ToLowerInvariant().Contains("total") ||
+                    description.ToLowerInvariant().Contains("tax"))
+                {
+                    continue;
+                }
+
+                var lineItem = new LineItem
+                {
+                    Description = description,
+                    Quantity = ParseDecimal(quantityStr),
+                    UnitPrice = ParseDecimal(rateStr),
+                    Amount = ParseDecimal(amountStr) ?? 0
+                };
+
+                lineItems.Add(lineItem);
+                _logger.LogInformation("Extracted line item: {Description} - {Amount}",
+                    lineItem.Description, lineItem.Amount);
+            }
+        }
+
+        return lineItems.Count > 0 ? lineItems : null;
+    }
+
+    private decimal? ParseDecimal(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        // Clean up the value - remove currency symbols, commas, etc.
+        var cleaned = value.Replace("$", "")
+            .Replace("€", "")
+            .Replace("£", "")
+            .Replace(",", "")
+            .Trim();
+
+        if (decimal.TryParse(cleaned, out var result))
+            return result;
+
+        return null;
     }
 
     private string GetDictionaryFieldValue(IReadOnlyDictionary<string, DocumentField> dict, string key)
