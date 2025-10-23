@@ -293,13 +293,17 @@ public class FormRecognizerService : IFormRecognizerService
             {
                 var content = cell.Content?.ToLowerInvariant() ?? "";
 
-                if (content.Contains("item") || content.Contains("description") || content.Contains("product"))
+                if (content.Contains("item") || content.Contains("description") ||
+                    content.Contains("product") || content.Contains("service"))
                     descriptionCol = cell.ColumnIndex;
-                else if (content.Contains("qty") || content.Contains("quantity"))
+                else if (content.Contains("qty") || content.Contains("quantity") ||
+                         content.Contains("hrs"))
                     quantityCol = cell.ColumnIndex;
-                else if (content.Contains("rate") || content.Contains("price") || content.Contains("unit"))
+                else if (content.Contains("rate") || content.Contains("price") ||
+                         content.Contains("unit") || content.Contains("cost"))
                     rateCol = cell.ColumnIndex;
-                else if (content.Contains("amount") || content.Contains("total"))
+                else if (content.Contains("amount") || content.Contains("sub total") ||
+                         content.Contains("subtotal"))
                     amountCol = cell.ColumnIndex;
             }
 
