@@ -61,45 +61,72 @@ export default function InvoiceList({ invoices: propInvoices, loading: propLoadi
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-      <table className="min-w-full text-sm">
-        <thead>
-          <tr className="text-left text-gray-600">
-            <th className="py-3 pl-4 pr-4">Vendor</th>
-            <th className="py-3 pr-4">Invoice #</th>
-            <th className="py-3 pr-4">Amount</th>
-            <th className="py-3 pr-4">Category</th>
-            <th className="py-3 pr-4">Uploaded</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((inv, idx) => {
-            const ex = inv.extractedData;
-            const cls = inv.classification;
-            const uploaded = inv.uploadDate ? new Date(inv.uploadDate) : null;
-            const key = [inv.id, inv.vendorId, inv.fileName].filter(Boolean).join("|") || `row-${idx}`;
-            const detailUrl = `/invoice/${encodeURIComponent(inv.id)}?vendorId=${encodeURIComponent(inv.vendorId)}`;
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      {/* Header - hidden on mobile */}
+      <div className="hidden md:grid md:grid-cols-5 text-left text-gray-600 text-sm border-b border-gray-200">
+        <div className="py-3 pl-4 pr-4">Vendor</div>
+        <div className="py-3 pr-4">Invoice #</div>
+        <div className="py-3 pr-4">Amount</div>
+        <div className="py-3 pr-4">Category</div>
+        <div className="py-3 pr-4">Uploaded</div>
+      </div>
 
-            return (
-              <tr
-                key={key}
-                className="border-t hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => window.location.href = detailUrl}
-              >
-                <td className="py-3 pl-4 pr-4 font-medium text-gray-900">{ex?.vendor || inv.vendorId}</td>
-                <td className="py-3 pr-4 text-gray-700">{ex?.invoiceNumber || "-"}</td>
-                <td className="py-3 pr-4 text-gray-900">{ex?.totalAmount != null ? ex.totalAmount.toFixed(2) : "-"}</td>
-                <td className="py-3 pr-4">
+      {/* Invoice items */}
+      <div className="divide-y divide-gray-200">
+        {data.map((inv, idx) => {
+          const ex = inv.extractedData;
+          const cls = inv.classification;
+          const uploaded = inv.uploadDate ? new Date(inv.uploadDate) : null;
+          const key = [inv.id, inv.vendorId, inv.fileName].filter(Boolean).join("|") || `row-${idx}`;
+          const detailUrl = `/invoice/${encodeURIComponent(inv.id)}?vendorId=${encodeURIComponent(inv.vendorId)}`;
+
+          return (
+            <div
+              key={key}
+              className="hover:bg-gray-50 transition-colors cursor-pointer"
+              onClick={() => window.location.href = detailUrl}
+            >
+              {/* Desktop grid layout */}
+              <div className="hidden md:grid md:grid-cols-5 text-sm py-3">
+                <div className="pl-4 pr-4 font-medium text-gray-900">{ex?.vendor || inv.vendorId}</div>
+                <div className="pr-4 text-gray-700">{ex?.invoiceNumber || "-"}</div>
+                <div className="pr-4 text-gray-900">{ex?.totalAmount != null ? ex.totalAmount.toFixed(2) : "-"}</div>
+                <div className="pr-4">
                   <span className="inline-block text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700">
                     {cls?.category || "-"}
                   </span>
-                </td>
-                <td className="py-3 pr-4 text-gray-700">{uploaded ? format(uploaded, "PPpp") : "-"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                </div>
+                <div className="pr-4 text-gray-700">{uploaded ? format(uploaded, "PPpp") : "-"}</div>
+              </div>
+
+              {/* Mobile stacked layout */}
+              <div className="md:hidden p-4 space-y-2 text-sm">
+                <div className="font-medium text-gray-900">{ex?.vendor || inv.vendorId}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-gray-600">Invoice #: </span>
+                    <span className="text-gray-700">{ex?.invoiceNumber || "-"}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Amount: </span>
+                    <span className="text-gray-900">{ex?.totalAmount != null ? ex.totalAmount.toFixed(2) : "-"}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Category: </span>
+                    <span className="inline-block text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700">
+                      {cls?.category || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Uploaded: </span>
+                    <span className="text-gray-700">{uploaded ? format(uploaded, "PPpp") : "-"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

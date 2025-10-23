@@ -61,7 +61,7 @@ public class OpenAIService : IOpenAIService
 Invoice details:
 Vendor: {extractedData.Vendor}
 Amount: {extractedData.TotalAmount:C} {extractedData.Currency}
-Invoice Number: {extractedData.InvoiceNumber}{lineItemsSection}
+{lineItemsSection}
 
 Analyze the vendor name, invoice details, and line items (if available) to determine the most appropriate category.
 The line item descriptions are especially important for accurate categorization.
